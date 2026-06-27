@@ -8,6 +8,7 @@ const { tenantIsolation } = require('../middleware/tenant');
 const { audit } = require('../middleware/audit');
 const telegram = require('../services/telegram.service');
 const pdfService = require('../services/pdf.service');
+const io = require('../services/socket.service');
 
 
 // All routes require auth + tenant isolation
@@ -26,6 +27,9 @@ router.post('/', audit('CREATE', 'purchase_request'), async (req, res) => {
     const id = 'REQ-' + Date.now();
     const now = Date.now();
     const grandTotal = items.reduce((s, i) => s + Number(i.total_cost || 0), 0);
+
+io.to(`org:${req.orgId}`).emit('request:created', { id, product: product_name, by: req.user.name });
+io.to(`org:${req.orgId}:purchasing`).emit('request:pending', { id });
 
     await inventoryDb.db.execute({
       sql: `INSERT INTO purchase_requests 
