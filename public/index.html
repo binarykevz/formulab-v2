@@ -1,160 +1,143 @@
-<script>
-const API = 'http://localhost:3000/api';
-let token = localStorage.getItem('fims_token');
-let currentUser = JSON.parse(localStorage.getItem('fims_user') || 'null');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><title>FIMS v2.0</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  body{font-family:sans-serif;margin:0;background:#f5f7fa;}
+  .container{max-width:1200px;margin:0 auto;padding:20px;}
+  .card{background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.05);margin-bottom:20px;}
+  .btn{padding:10px 20px;border:none;border-radius:4px;cursor:pointer;color:#fff;font-weight:600;}
+  .btn-primary{background:#667eea;} .btn-success{background:#27ae60;} .btn-danger{background:#e74c3c;}
+  input,select{width:100%;padding:10px;margin:5px 0;border:1px solid #ddd;border-radius:4px;}
+  table{width:100%;border-collapse:collapse;} th,td{padding:10px;text-align:left;border-bottom:1px solid #eee;}
+  .hidden{display:none!important;}
+  /* Modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;}
+  .modal-content{background:#fff;padding:30px;border-radius:8px;width:400px;max-width:90%;}
+</style>
+</head>
+<body>
 
-async function api(path, opts = {}) {
-  const res = await fetch(API + path, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
-      ...(opts.headers || {})
-    },
-    body: opts.body ? JSON.stringify(opts.body) : undefined
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Request failed');
-  return data;
-}
+<!-- AUTH SCREEN -->
+<div id="authScreen" class="container" style="max-width:400px;margin-top:100px;">
+  <div class="card">
+    <h2 id="authTitle">Login</h2>
+    <input id="authOrg" placeholder="Organization Name">
+    <input id="authUser" placeholder="Username / Email">
+    <input id="authPass" type="password" placeholder="Password">
+    <button class="btn btn-primary" style="width:100%" onclick="handleAuth()">Submit</button>
+    <div style="margin-top:15px;text-align:center;font-size:14px;">
+      <a href="#" onclick="toggleAuthMode()" id="authToggle">Need an account? Register</a><br>
+      <a href="#" onclick="showForgotModal()" style="color:#e74c3c;">Forgot Password?</a>
+    </div>
+  </div>
+</div>
 
-// Register
-async function register() {
-  try {
-    await api('/auth/register', {
-      method: 'POST',
-      body: {
-        name: regName.value, username: regUser.value, email: regEmail.value,
-        organization: regOrg.value, department: regDept.value, password: regPass.value
-      }
-    });
-    toast('✅ Registered! Check your email. Please login.');
-    document.querySelector('.auth-tab').click();
-  } catch (e) { toast(e.message, 'error'); }
-}
-
-// Login
-async function login() {
-  try {
-    const data = await api('/auth/login', {
-      method: 'POST',
-      body: { username: loginUser.value, password: loginPass.value, organization: loginOrg.value }
-    });
-    token = data.token;
-    currentUser = data.user;
-    localStorage.setItem('fims_token', token);
-    localStorage.setItem('fims_user', JSON.stringify(currentUser));
-    initApp();
-  } catch (e) { toast(e.message, 'error'); }
-}
-<!-- Add this link below the login button -->
-<div style="text-align:center;margin-top:15px;">
-  <a href="#" onclick="showForgotPassword();return false;" 
-     style="color:#667eea;text-decoration:none;font-size:14px;">
-    🔐 Forgot Password?
-  </a>
+<!-- MAIN APP -->
+<div id="app" class="hidden">
+  <div style="background:#2c3e50;color:#fff;padding:15px;display:flex;justify-content:space-between;">
+    <span>📦 FIMS v2.0</span>
+    <button class="btn btn-danger" onclick="logout()">Logout</button>
+  </div>
+  <div class="container">
+    <div class="card">
+      <h3>New Formulation Request</h3>
+      <input id="fProd" placeholder="Product Name">
+      <button class="btn btn-success" onclick="submitReq()">Submit Request</button>
+    </div>
+    <div class="card">
+      <h3>Recent Requests</h3>
+      <table id="reqTable"><thead><tr><th>ID</th><th>Product</th><th>Status</th><th>Action</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
 </div>
 
 <!-- FORGOT PASSWORD MODAL -->
-<div id="forgotModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
-  <div style="background:#fff;border-radius:15px;max-width:450px;width:100%;padding:30px;position:relative;max-height:90vh;overflow-y:auto;">
-    <button onclick="closeForgotPassword()" 
-            style="position:absolute;top:15px;right:15px;background:none;border:none;font-size:24px;cursor:pointer;color:#7f8c8d;">×</button>
-    
-    <h2 style="color:#667eea;margin-bottom:5px;">🔐 Reset Password</h2>
-    <p style="color:#7f8c8d;margin-bottom:20px;font-size:14px;">We'll send a 6-digit OTP to your registered email</p>
-
-    <!-- STEP 1: Request OTP -->
-    <div id="forgotStep1">
-      <div class="form-group">
-        <label>Registered Email</label>
-        <input type="email" id="fpEmail" placeholder="you@company.com">
-      </div>
-      <div class="form-group">
-        <label>Organization</label>
-        <input type="text" id="fpOrg" placeholder="Your Company Name">
-      </div>
-      <button class="btn btn-primary" style="width:100%;" onclick="requestOtp()">
-        📧 Send OTP
-      </button>
+<div id="forgotModal" class="modal hidden">
+  <div class="modal-content">
+    <h3>🔐 Reset Password</h3>
+    <div id="fpStep1">
+      <input id="fpEmail" placeholder="Registered Email">
+      <input id="fpOrg" placeholder="Organization">
+      <button class="btn btn-primary" style="width:100%" onclick="requestOtp()">Send OTP</button>
     </div>
-
-    <!-- STEP 2: Verify OTP -->
-    <div id="forgotStep2" class="hidden">
-      <div style="background:#d4edda;color:#155724;padding:12px;border-radius:6px;margin-bottom:15px;font-size:13px;">
-        ✅ OTP sent to <strong id="fpEmailDisplay"></strong>. Check your inbox (and spam folder).
-      </div>
-      <div class="form-group">
-        <label>Enter 6-Digit OTP</label>
-        <input type="text" id="fpOtp" maxlength="6" placeholder="• • • • • •" 
-               style="font-size:24px;letter-spacing:10px;text-align:center;font-family:monospace;">
-        <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;">
-          <span style="color:#7f8c8d;">⏰ Expires in <strong id="fpTimer">15:00</strong></span>
-          <a href="#" onclick="requestOtp();return false;" style="color:#667eea;">Resend OTP</a>
-        </div>
-      </div>
-      <button class="btn btn-primary" style="width:100%;" onclick="verifyOtp()">
-        ✓ Verify OTP
-      </button>
+    <div id="fpStep2" class="hidden">
+      <input id="fpOtp" placeholder="6-Digit OTP" maxlength="6" style="text-align:center;letter-spacing:5px;font-size:20px;">
+      <input id="fpNewPass" type="password" placeholder="New Password">
+      <button class="btn btn-success" style="width:100%" onclick="resetPass()">Reset Password</button>
     </div>
-
-    <!-- STEP 3: New Password -->
-    <div id="forgotStep3" class="hidden">
-      <div style="background:#d4edda;color:#155724;padding:12px;border-radius:6px;margin-bottom:15px;font-size:13px;">
-        ✅ OTP verified! Create your new password.
-      </div>
-      <div class="form-group">
-        <label>New Password</label>
-        <input type="password" id="fpNewPass" placeholder="Min 6 characters">
-      </div>
-      <div class="form-group">
-        <label>Confirm New Password</label>
-        <input type="password" id="fpConfirmPass" placeholder="Re-enter password">
-      </div>
-      <button class="btn btn-success" style="width:100%;" onclick="resetPassword()">
-        🔒 Reset Password
-      </button>
-    </div>
-
-    <div id="fpMessage" style="margin-top:15px;"></div>
+    <button onclick="document.getElementById('forgotModal').classList.add('hidden')" style="margin-top:10px;background:none;border:none;color:#7f8c8d;cursor:pointer;">Cancel</button>
+    <div id="fpMsg" style="margin-top:10px;font-size:13px;"></div>
   </div>
 </div>
-function logout() {
-  localStorage.removeItem('fims_token');
-  localStorage.removeItem('fims_user');
+
+<script>
+const API = '/api';
+let token = localStorage.getItem('fims_token');
+let isRegister = false;
+let fpData = {};
+
+if(token) document.getElementById('authScreen').classList.add('hidden'), document.getElementById('app').classList.remove('hidden'), loadReqs();
+
+function toggleAuthMode(){
+  isRegister=!isRegister;
+  document.getElementById('authTitle').innerText=isRegister?'Register':'Login';
+  document.getElementById('authToggle').innerText=isRegister?'Have an account? Login':'Need an account? Register';
+}
+
+async function handleAuth(){
+  const endpoint = isRegister ? '/auth/register' : '/auth/login';
+  const body = {
+    organization: document.getElementById('authOrg').value,
+    username: document.getElementById('authUser').value,
+    password: document.getElementById('authPass').value
+  };
+  if(isRegister) body.name = body.username, body.email = body.username+'@temp.com', body.department='R&D';
+  
+  const res = await fetch(API+endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const data = await res.json();
+  if(!res.ok) return alert(data.error);
+  if(isRegister) return alert('Registered! Please login.');
+  localStorage.setItem('fims_token',data.token);
   location.reload();
 }
 
-// Submit Request
-async function submitRequest() {
-  // ... collect form data as before ...
-  try {
-    const data = await api('/requests', {
-      method: 'POST',
-      body: {
-        company_name: fCompany.value, date: fDate.value,
-        product_name: fProduct.value, batch_no: fBatch.value,
-        items: rows
-      }
-    });
-    toast('✅ Submitted! ID: ' + data.id);
-  } catch (e) { toast(e.message, 'error'); }
+function logout(){localStorage.removeItem('fims_token');location.reload();}
+
+async function submitReq(){
+  const res = await fetch(API+'/requests',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({company_name:'My Org',date:new Date().toISOString().split('T')[0],product_name:document.getElementById('fProd').value,batch_no:'B-001',items:[{raw_material:'Test',material_code:'T1',supplier:'Sup',qty_sachet:10,qty_total:10000,unit_cost:0.1,total_cost:1000}]})});
+  if(res.ok) alert('Submitted!'),loadReqs();
 }
 
-// Decide
-async function decide(id, status) {
-  try {
-    const notes = document.getElementById('note-' + id).value;
-    await api('/requests/' + id + '/decide', {
-      method: 'POST', body: { status, notes }
-    });
-    toast('Request ' + status.toLowerCase());
-    renderPending();
-  } catch (e) { toast(e.message, 'error'); }
+async function loadReqs(){
+  const res = await fetch(API+'/requests',{headers:{'Authorization':'Bearer '+token}});
+  const data = await res.json();
+  document.querySelector('#reqTable tbody').innerHTML = data.requests.map(r=>`<tr><td>${r.id}</td><td>${r.product_name}</td><td>${r.status}</td><td><a href="${API}/requests/${r.id}/pdf" target="_blank">📄 PDF</a></td></tr>`).join('');
 }
 
-// Auto-login
-window.addEventListener('load', () => {
-  if (token && currentUser) initApp();
-});
+// FORGOT PASSWORD LOGIC
+function showForgotModal(){document.getElementById('forgotModal').classList.remove('hidden');}
+async function requestOtp(){
+  const res = await fetch(API+'/auth/forgot-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('fpEmail').value,organization:document.getElementById('fpOrg').value})});
+  const data = await res.json();
+  document.getElementById('fpMsg').innerText = data.message;
+  document.getElementById('fpStep1').classList.add('hidden');
+  document.getElementById('fpStep2').classList.remove('hidden');
+  fpData = {email:document.getElementById('fpEmail').value,org:document.getElementById('fpOrg').value};
+  if(data.dev_otp) document.getElementById('fpOtp').value=data.dev_otp;
+}
+async function resetPass(){
+  const res = await fetch(API+'/auth/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:fpData.email,organization:fpData.org,otp:document.getElementById('fpOtp').value,newPassword:document.getElementById('fpNewPass').value})});
+  const data = await res.json();
+  document.getElementById('fpMsg').innerText = data.message || data.error;
+  if(res.ok) setTimeout(()=>location.reload(),2000);
+}
+
+// WEBSOCKET
+const socket = io({auth:{token}});
+socket.on('request:created',()=>loadReqs());
+socket.on('request:decided',()=>loadReqs());
 </script>
+</body>
+</html>
