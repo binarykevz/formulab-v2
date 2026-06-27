@@ -47,7 +47,78 @@ async function login() {
     initApp();
   } catch (e) { toast(e.message, 'error'); }
 }
+<!-- Add this link below the login button -->
+<div style="text-align:center;margin-top:15px;">
+  <a href="#" onclick="showForgotPassword();return false;" 
+     style="color:#667eea;text-decoration:none;font-size:14px;">
+    🔐 Forgot Password?
+  </a>
+</div>
 
+<!-- FORGOT PASSWORD MODAL -->
+<div id="forgotModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:15px;max-width:450px;width:100%;padding:30px;position:relative;max-height:90vh;overflow-y:auto;">
+    <button onclick="closeForgotPassword()" 
+            style="position:absolute;top:15px;right:15px;background:none;border:none;font-size:24px;cursor:pointer;color:#7f8c8d;">×</button>
+    
+    <h2 style="color:#667eea;margin-bottom:5px;">🔐 Reset Password</h2>
+    <p style="color:#7f8c8d;margin-bottom:20px;font-size:14px;">We'll send a 6-digit OTP to your registered email</p>
+
+    <!-- STEP 1: Request OTP -->
+    <div id="forgotStep1">
+      <div class="form-group">
+        <label>Registered Email</label>
+        <input type="email" id="fpEmail" placeholder="you@company.com">
+      </div>
+      <div class="form-group">
+        <label>Organization</label>
+        <input type="text" id="fpOrg" placeholder="Your Company Name">
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="requestOtp()">
+        📧 Send OTP
+      </button>
+    </div>
+
+    <!-- STEP 2: Verify OTP -->
+    <div id="forgotStep2" class="hidden">
+      <div style="background:#d4edda;color:#155724;padding:12px;border-radius:6px;margin-bottom:15px;font-size:13px;">
+        ✅ OTP sent to <strong id="fpEmailDisplay"></strong>. Check your inbox (and spam folder).
+      </div>
+      <div class="form-group">
+        <label>Enter 6-Digit OTP</label>
+        <input type="text" id="fpOtp" maxlength="6" placeholder="• • • • • •" 
+               style="font-size:24px;letter-spacing:10px;text-align:center;font-family:monospace;">
+        <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;">
+          <span style="color:#7f8c8d;">⏰ Expires in <strong id="fpTimer">15:00</strong></span>
+          <a href="#" onclick="requestOtp();return false;" style="color:#667eea;">Resend OTP</a>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="verifyOtp()">
+        ✓ Verify OTP
+      </button>
+    </div>
+
+    <!-- STEP 3: New Password -->
+    <div id="forgotStep3" class="hidden">
+      <div style="background:#d4edda;color:#155724;padding:12px;border-radius:6px;margin-bottom:15px;font-size:13px;">
+        ✅ OTP verified! Create your new password.
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="fpNewPass" placeholder="Min 6 characters">
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" id="fpConfirmPass" placeholder="Re-enter password">
+      </div>
+      <button class="btn btn-success" style="width:100%;" onclick="resetPassword()">
+        🔒 Reset Password
+      </button>
+    </div>
+
+    <div id="fpMessage" style="margin-top:15px;"></div>
+  </div>
+</div>
 function logout() {
   localStorage.removeItem('fims_token');
   localStorage.removeItem('fims_user');
