@@ -31,6 +31,23 @@ async function init() {
     )`,
     `CREATE INDEX IF NOT EXISTS idx_users_org ON users(org_id)`,
 // Add to init() batch array:
+`CREATE TABLE IF NOT EXISTS password_resets (
+  id TEXT PRIMARY KEY,
+  org_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  email TEXT NOT NULL,
+  otp TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  used INTEGER DEFAULT 0,
+  attempts INTEGER DEFAULT 0,
+  ip_address TEXT,
+  user_agent TEXT,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY(user_id) REFERENCES users(id)
+)`,
+`CREATE INDEX IF NOT EXISTS idx_reset_email ON password_resets(email)`,
+`CREATE INDEX IF NOT EXISTS idx_reset_otp ON password_resets(otp)`,
+`CREATE INDEX IF NOT EXISTS idx_reset_expires ON password_resets(expires_at)`
 `CREATE TABLE IF NOT EXISTS invites (
   id TEXT PRIMARY KEY,
   org_id TEXT NOT NULL,
