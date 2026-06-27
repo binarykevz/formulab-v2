@@ -1,86 +1,22 @@
 const TelegramBot = require('node-telegram-bot-api');
 require('dotenv').config();
-
 let bot = null;
-const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 function init() {
-  if (!process.env.TELEGRAM_BOT_TOKEN) {
-    console.warn('⚠️  Telegram bot token not configured');
-    return;
-  }
+  if (!process.env.TELEGRAM_BOT_TOKEN) return;
   bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false });
-  console.log('✅ Telegram service ready');
+  console.log('✅ Telegram ready');
 }
 
-async function send(message) {
-  if (!bot || !CHAT_ID) return false;
-  try {
-    await bot.sendMessage(CHAT_ID, message, { parse_mode: 'HTML' });
-    return true;
-  } catch (err) {
-    console.error('Telegram send error:', err.message);
-    return false;
-  }
+async function send(msg) {
+  if (!bot || !process.env.TELEGRAM_CHAT_ID) return false;
+  try { await bot.sendMessage(process.env.TELEGRAM_CHAT_ID, msg, { parse_mode: 'HTML' }); return true; }
+  catch (e) { console.error('TG Error:', e.message); return false; }
 }
 
-async function notifyNewRegistration(data) {
-  const msg = `🆕 <b>NEW USER REGISTRATION</b>
-━━━━━━━━━━━━━━━━━━━━
-🏢 <b>Organization:</b> ${data.orgName || 'N/A'}
-👤 <b>Name:</b> ${data.userName}
-🔑 <b>Username:</b> ${data.username}
-📧 <b>Email:</b> ${data.email}
-🏷️ <b>Department:</b> ${data.department}
-🌐 <b>IP:</b> ${data.ipAddress || 'N/A'}
-🕐 <b>Time:</b> ${new Date().toLocaleString()}
-━━━━━━━━━━━━━━━━━━━━`;
-  return send(msg);
-}
+const notifyNewRegistration = (d) => send(`🆕 <b>NEW USER</b>\n${d.userName} (${d.department}) joined ${d.orgName}`);
+const notifyNewRequest = (r) => send(`🆕 <b>NEW REQUEST</b>\n${r.id} - ${r.product_name} (₱${r.grand_total})`);
+const notifyRequestDecision = (r, by) => send(`${r.status==='APPROVED'?'✅':'❌'} <b>${r.status}</b>\n${r.id} by ${by}`);
+const notifyPasswordReset = (d, type) => send(`🔐 <b>PASS RESET ${type}</b>\n${d.userName} (${d.email})`);
 
-async function notifyNewRequest(req) {
-  const msg = `🆕 <b>NEW PURCHASE REQUEST</b>
-━━━━━━━━━━━━━━━━━━━━
-📌 <b>ID:</b> ${req.id}
-🏢 <b>Company:</b> ${req.company_name}
-🏷️ <b>Organization:</b> ${req.orgName}
-📅 <b>Date:</b> ${req.date}
-🧪 <b>Product:</b> ${req.product_name}
-🔖 <b>Batch:</b> ${req.batch_no}
-👤 <b>Requestor:</b> ${req.requestor_name} (${req.department})
-📦 <b>Items:</b> ${req.items?.length || 0}
-💰 <b>Total:</b> ₱ ${Number(req.grand_total).toFixed(2)}
-━━━━━━━━━━━━━━━━━━━━`;
-  return send(msg);
-}
-
-async function notifyRequestDecision(req, decidedBy, notes) {
-  const emoji = req.status === 'APPROVED' ? '✅' : '❌';
-  const msg = `${emoji} <b>REQUEST ${req.status}</b>
-━━━━━━━━━━━━━━━━━━━━
-📌 <b>ID:</b> ${req.id}
-🧪 <b>Product:</b> ${req.product_name}
-🏷️ <b>Organization:</b> ${req.orgName}
-💰 <b>Total:</b> ₱ ${Number(req.grand_total).toFixed(2)}
-👤 <b>Decided by:</b> ${decidedBy}
-📝 <b>Notes:</b> ${notes || 'None'}
-━━━━━━━━━━━━━━━━━━━━`;
-  return send(msg);
-}
-async function notifyPasswordReset(data, type) {
-  const emoji = type === 'REQUEST' ? '🔐' : '✅';
-  const title = type === 'REQUEST' ? 'PASSWORD RESET REQUESTED' : 'PASSWORD CHANGED';
-  const msg = `${emoji} <b>${title}</b>
-━━━━━━━━━━━━━━━━━━━━
-🏢 <b>Organization:</b> ${data.orgName}
-👤 <b>User:</b> ${data.userName}
-📧 <b>Email:</b> ${data.email}
-🏷️ <b>Department:</b> ${data.department}
-🌐 <b>IP:</b> ${data.ipAddress || 'N/A'}
-🕐 <b>Time:</b> ${new Date().toLocaleString()}
-━━━━━━━━━━━━━━━━━━━━`;
-  return send(msg);
-}
-
-// Update exports
 module.exports = { init, send, notifyNewRegistration, notifyNewRequest, notifyRequestDecision, notifyPasswordReset };
