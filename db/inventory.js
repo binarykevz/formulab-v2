@@ -71,6 +71,22 @@ async function init() {
     `CREATE INDEX IF NOT EXISTS idx_form_org ON formulations(org_id)`,
     `CREATE INDEX IF NOT EXISTS idx_req_org ON purchase_requests(org_id)`,
     `CREATE INDEX IF NOT EXISTS idx_req_status ON purchase_requests(status)`,
+// Add to init() batch array:
+`CREATE TABLE IF NOT EXISTS materials_master (
+  id TEXT PRIMARY KEY,
+  org_id TEXT NOT NULL,
+  code TEXT NOT NULL,
+  name TEXT NOT NULL,
+  supplier TEXT NOT NULL,
+  unit TEXT DEFAULT 'g',
+  unit_cost REAL DEFAULT 0,
+  category TEXT,
+  is_active INTEGER DEFAULT 1,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  UNIQUE(org_id, code)
+)`,
+`CREATE INDEX IF NOT EXISTS idx_mat_org ON materials_master(org_id)`
   ], 'write');
   console.log('✅ Inventory DB initialized');
 }
