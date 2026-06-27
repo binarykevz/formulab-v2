@@ -67,5 +67,20 @@ async function notifyRequestDecision(req, decidedBy, notes) {
 ━━━━━━━━━━━━━━━━━━━━`;
   return send(msg);
 }
+async function notifyPasswordReset(data, type) {
+  const emoji = type === 'REQUEST' ? '🔐' : '✅';
+  const title = type === 'REQUEST' ? 'PASSWORD RESET REQUESTED' : 'PASSWORD CHANGED';
+  const msg = `${emoji} <b>${title}</b>
+━━━━━━━━━━━━━━━━━━━━
+🏢 <b>Organization:</b> ${data.orgName}
+👤 <b>User:</b> ${data.userName}
+📧 <b>Email:</b> ${data.email}
+🏷️ <b>Department:</b> ${data.department}
+🌐 <b>IP:</b> ${data.ipAddress || 'N/A'}
+🕐 <b>Time:</b> ${new Date().toLocaleString()}
+━━━━━━━━━━━━━━━━━━━━`;
+  return send(msg);
+}
 
-module.exports = { init, send, notifyNewRegistration, notifyNewRequest, notifyRequestDecision };
+// Update exports
+module.exports = { init, send, notifyNewRegistration, notifyNewRequest, notifyRequestDecision, notifyPasswordReset };
