@@ -7,6 +7,8 @@ const { authenticate, requireDepartment } = require('../middleware/auth');
 const { tenantIsolation } = require('../middleware/tenant');
 const { audit } = require('../middleware/audit');
 const telegram = require('../services/telegram.service');
+const pdfService = require('../services/pdf.service');
+
 
 // All routes require auth + tenant isolation
 router.use(authenticate, tenantIsolation);
@@ -89,6 +91,21 @@ router.get('/pending', requireDepartment('PURCHASING'), async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch pending' });
   }
 });
+
+
+// Add this route:
+router.get('/:id/pdf', async (req, res) => {
+  try {
+    const pdf = await pdfService.generateRequestPDF(req.params.id, req.orgId);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${req.params.id}.pdf"`);
+    res.send(pdf);
+  } catch (err) {
+    console.error(err);
+    res.status(404).json({ error: err.message });
+  }
+});
+
 
 // GET SINGLE REQUEST
 router.get('/:id', async (req, res) => {
