@@ -63,7 +63,7 @@ async function start() {
     telegram.init();
 
     const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`\n🚀 FIMS Backend running on http://localhost:${PORT}`);
       console.log(`📊 3 Turso databases connected (accounts, inventory, audit)`);
       console.log(`🔒 Multi-tenant isolation: ENABLED\n`);
