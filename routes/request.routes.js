@@ -141,6 +141,7 @@ router.post('/:id/decide', requireDepartment('PURCHASING'), audit('DECIDE', 'pur
       sql: 'SELECT * FROM purchase_requests WHERE id = ? AND org_id = ?',
       args: [req.params.id, req.orgId]
     });
+io.to(`org:${req.orgId}`).emit('request:decided', { id, status, by: req.user.name });
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Not found' });
     const request = existing.rows[0];
     if (request.status !== 'PENDING') {
