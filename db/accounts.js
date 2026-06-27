@@ -30,6 +30,26 @@ async function init() {
       UNIQUE(org_id, email)
     )`,
     `CREATE INDEX IF NOT EXISTS idx_users_org ON users(org_id)`,
+// Add to init() batch array:
+`CREATE TABLE IF NOT EXISTS invites (
+  id TEXT PRIMARY KEY,
+  org_id TEXT NOT NULL,
+  email TEXT NOT NULL,
+  department TEXT NOT NULL,
+  token TEXT UNIQUE NOT NULL,
+  invited_by TEXT NOT NULL,
+  invited_by_name TEXT NOT NULL,
+  status TEXT DEFAULT 'PENDING' CHECK(status IN ('PENDING','ACCEPTED','EXPIRED','REVOKED')),
+  expires_at INTEGER NOT NULL,
+  accepted_at INTEGER,
+  accepted_user_id TEXT,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY(org_id) REFERENCES organizations(id),
+  FOREIGN KEY(invited_by) REFERENCES users(id)
+)`,
+`CREATE INDEX IF NOT EXISTS idx_invites_token ON invites(token)`,
+`CREATE INDEX IF NOT EXISTS idx_invites_org ON invites(org_id)`,
+`CREATE INDEX IF NOT EXISTS idx_invites_email ON invites(email)`
   ], 'write');
   console.log('✅ Accounts DB initialized');
 }
