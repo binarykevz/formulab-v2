@@ -70,5 +70,36 @@ async function sendWelcomeEmail(user) {
     return false;
   }
 }
+// Add this function to the existing email.service.js
+async function sendInviteEmail(data) {
+  if (!transporter) return false;
+  try {
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:8px;overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:30px;text-align:center;">
+          <h1 style="margin:0;">📨 You're Invited!</h1>
+        </div>
+        <div style="padding:30px;">
+          <p>Hi,</p>
+          <p><strong>${data.invitedByName}</strong> has invited you to join <strong>${data.orgName}</strong> on FIMS as a member of the <strong>${data.department}</strong> department.</p>
+          <div style="text-align:center;margin:30px 0;">
+            <a href="${data.acceptLink}" style="background:#667eea;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block;">Accept Invitation</a>
+          </div>
+          <p style="font-size:13px;color:#7f8c8d;">This invitation expires on ${new Date(data.expiresAt).toLocaleString()}. If the button doesn't work, copy this link:<br><code style="word-break:break-all;">${data.acceptLink}</code></p>
+        </div>
+      </div>`;
+    await transporter.sendMail({
+      from: process.env.MAIL_FROM,
+      to: data.email,
+      subject: `📨 Invitation to join ${data.orgName} on FIMS`,
+      html
+    });
+    return true;
+  } catch (err) {
+    console.error('Invite email error:', err);
+    return false;
+  }
+}
 
-module.exports = { init, sendWelcomeEmail };
+// Export it alongside sendWelcomeEmail
+module.exports = { init, sendWelcomeEmail, sendInviteEmail };
