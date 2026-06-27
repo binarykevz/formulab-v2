@@ -13,6 +13,8 @@ const telegram = require('./services/telegram.service');
 const authRoutes = require('./routes/auth.routes');
 const requestRoutes = require('./routes/request.routes');
 const adminRoutes = require('./routes/admin.routes');
+const server = http.createServer(app);
+socketService.init(server);
 
 const app = express();
 
