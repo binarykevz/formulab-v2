@@ -1,26 +1,19 @@
 # Server
 PORT=3000
 NODE_ENV=development
-JWT_SECRET=change_this_to_a_very_long_random_string
+JWT_SECRET=super_secret_jwt_key_change_this
 JWT_EXPIRES_IN=7d
+FRONTEND_URL=http://localhost:3000
 
-# Turso Database #1 - Accounts (users, orgs, sessions)
-TURSO_ACCOUNTS_URL=libsql://your-accounts-db-your-org.turso.io
-TURSO_ACCOUNTS_TOKEN=your_accounts_auth_token
+# Turso DBs (Create 3 separate databases in Turso dashboard)
+TURSO_ACCOUNTS_URL=libsql://fims-accounts-your-org.turso.io
+TURSO_ACCOUNTS_TOKEN=your_accounts_token
+TURSO_INVENTORY_URL=libsql://fims-inventory-your-org.turso.io
+TURSO_INVENTORY_TOKEN=your_inventory_token
+TURSO_AUDIT_URL=libsql://fims-audit-your-org.turso.io
+TURSO_AUDIT_TOKEN=your_audit_token
 
-# Turso Database #2 - Inventory (formulations, requests, materials)
-TURSO_INVENTORY_URL=libsql://your-inventory-db-your-org.turso.io
-TURSO_INVENTORY_TOKEN=your_inventory_auth_token
-
-# Turso Database #3 - Audit (registration logs, audit trail) - SEPARATE
-TURSO_AUDIT_URL=libsql://your-audit-db-your-org.turso.io
-TURSO_AUDIT_TOKEN=your_audit_auth_token
-
-# Telegram Bot
-TELEGRAM_BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
-TELEGRAM_CHAT_ID=987654321
-
-# Nodemailer (Gmail example)
+# Email (Gmail App Password recommended)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
@@ -29,5 +22,11 @@ SMTP_PASS=your-app-password
 MAIL_FROM="FIMS System <your-email@gmail.com>"
 ADMIN_EMAIL=admin@company.com
 
-# Frontend URL (for CORS)
-FRONTEND_URL=http://localhost:5500
+# Telegram
+TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
+TELEGRAM_CHAT_ID=987654321
+
+# Backups
+BACKUP_DIR=./backups
+BACKUP_CRON=0 2 * * *
+TZ=UTC
