@@ -1,0 +1,89 @@
+<script>
+const API = 'http://localhost:3000/api';
+let token = localStorage.getItem('fims_token');
+let currentUser = JSON.parse(localStorage.getItem('fims_user') || 'null');
+
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+      ...(opts.headers || {})
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+// Register
+async function register() {
+  try {
+    await api('/auth/register', {
+      method: 'POST',
+      body: {
+        name: regName.value, username: regUser.value, email: regEmail.value,
+        organization: regOrg.value, department: regDept.value, password: regPass.value
+      }
+    });
+    toast('✅ Registered! Check your email. Please login.');
+    document.querySelector('.auth-tab').click();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// Login
+async function login() {
+  try {
+    const data = await api('/auth/login', {
+      method: 'POST',
+      body: { username: loginUser.value, password: loginPass.value, organization: loginOrg.value }
+    });
+    token = data.token;
+    currentUser = data.user;
+    localStorage.setItem('fims_token', token);
+    localStorage.setItem('fims_user', JSON.stringify(currentUser));
+    initApp();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function logout() {
+  localStorage.removeItem('fims_token');
+  localStorage.removeItem('fims_user');
+  location.reload();
+}
+
+// Submit Request
+async function submitRequest() {
+  // ... collect form data as before ...
+  try {
+    const data = await api('/requests', {
+      method: 'POST',
+      body: {
+        company_name: fCompany.value, date: fDate.value,
+        product_name: fProduct.value, batch_no: fBatch.value,
+        items: rows
+      }
+    });
+    toast('✅ Submitted! ID: ' + data.id);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// Decide
+async function decide(id, status) {
+  try {
+    const notes = document.getElementById('note-' + id).value;
+    await api('/requests/' + id + '/decide', {
+      method: 'POST', body: { status, notes }
+    });
+    toast('Request ' + status.toLowerCase());
+    renderPending();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// Auto-login
+window.addEventListener('load', () => {
+  if (token && currentUser) initApp();
+});
+</script>
