@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FIMS — Admin Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',sans-serif; }
+  body { background:#f5f7fa; }
+  .header { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; padding:20px 30px; display:flex; justify-content:space-between; align-items:center; }
+  .header h1 { font-size:22px; }
+  .container { max-width:1400px; margin:20px auto; padding:0 20px; }
+  .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:15px; margin-bottom:25px; }
+  .stat { background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,.05); border-left:4px solid #667eea; }
+  .stat .num { font-size:32px; font-weight:700; color:#2c3e50; }
+  .stat .lbl { color:#7f8c8d; font-size:13px; margin-top:4px; }
+  .stat.green { border-color:#27ae60; }
+  .stat.orange { border-color:#f39c12; }
+  .stat.red { border-color:#e74c3c; }
+  .stat.blue { border-color:#3498db; }
+  .charts-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(450px,1fr)); gap:20px; }
+  .chart-card { background:#fff; padding:20px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+  .chart-card h3 { color:#2c3e50; margin-bottom:15px; font-size:16px; }
+  canvas { max-height:300px; }
+  .live-dot { display:inline-block; width:8px; height:8px; background:#27ae60; border-radius:50%; margin-right:6px; animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+  .btn { padding:8px 16px; background:#fff; color:#667eea; border:1px solid #667eea; border-radius:6px; cursor:pointer; text-decoration:none; font-weight:600; }
+  .btn:hover { background:#667eea; color:#fff; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📊 Admin Dashboard <span class="live-dot"></span><small style="font-size:12px;opacity:.8;">LIVE</small></h1>
+  <div>
+    <a href="/" class="btn">← Back to App</a>
+    <button class="btn" onclick="loadAll()">🔄 Refresh</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="stats-grid" id="statsGrid"></div>
+  <div class="charts-grid">
+    <div class="chart-card"><h3>📈 Requests Status Distribution</h3><canvas id="statusChart"></canvas></div>
+    <div class="chart-card"><h3>🏢 Requests by Department</h3><canvas id="deptChart"></canvas></div>
+    <div class="chart-card" style="grid-column:1/-1;"><h3>📅 Monthly Trend (Last 12 Months)</h3><canvas id="monthlyChart"></canvas></div>
+    <div class="chart-card"><h3>🧪 Top 10 Materials</h3><canvas id="materialsChart"></canvas></div>
+    <div class="chart-card"><h3>👥 Most Active Users</h3><canvas id="usersChart"></canvas></div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const API = '/api';
+const token = localStorage.getItem('fims_token');
+const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+
+async function get(path) {
+  const r = await fetch(API + path, { headers });
+  if (!r.ok) throw new Error('Failed');
+  return r.json();
+}
+
+let charts = {};
+
+async function loadStats() {
+  const s = await get('/dashboard/stats');
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat"><div class="num">${s.totalRequests}</div><div class="lbl">Total Requests</div></div>
+    <div class="stat orange"><div class="num">${s.pending}</div><div class="lbl">Pending</div></div>
+    <div class="stat green"><div class="num">${s.approved}</div><div class="lbl">Approved</div></div>
+    <div class="stat red"><div class="num">${s.declined}</div><div class="lbl">Declined</div></div>
+    <div class="stat blue"><div class="num">₱${Number(s.totalApprovedValue).toLocaleString(undefined,{maximumFractionDigits:0})}</div><div class="lbl">Approved Value</div></div>
+    <div class="stat"><div class="num">${s.requestsLast30Days}</div><div class="lbl">Last 30 Days</div></div>
+    <div class="stat green"><div class="num">${s.activeUsers}</div><div class="lbl">Active Users</div></div>
+    <div class="stat orange"><div class="num">${s.pendingInvites}</div><div class="lbl">Pending Invites</div></div>`;
+}
+
+async function loadStatusChart() {
+  const d = await get('/dashboard/chart/status');
+  if (charts.status) charts.status.destroy();
+  charts.status = new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: { labels: d.labels, datasets: [{ data: d.data, backgroundColor: ['#f39c12','#27ae60','#e74c3c','#3498db'] }] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+  });
+}
+
+async function loadDeptChart() {
+  const d = await get('/dashboard/chart/departments');
+  if (charts.dept) charts.dept.destroy();
+  charts.dept = new Chart(document.getElementById('deptChart'), {
+    type: 'bar',
+    data: { labels: d.labels, datasets: [
+      { label: 'Count', data: d.counts, backgroundColor: '#667eea' },
+      { label: 'Total Value (₱)', data: d.totals, backgroundColor: '#27ae60', yAxisID: 'y1', hidden: true }
+    ]},
+    options: { responsive: true, scales: { y1: { position: 'right', grid: { drawOnChartArea: false } } } }
+  });
+}
+
+async function loadMonthlyChart() {
+  const d = await get('/dashboard/chart/monthly');
+  if (charts.monthly) charts.monthly.destroy();
+  charts.monthly = new Chart(document.getElementById('monthlyChart'), {
+    type: 'line',
+    data: { labels: d.labels, datasets: [
+      { label: 'Requests', data: d.counts, borderColor: '#667eea', backgroundColor: 'rgba(102,126,234,.1)', fill: true, tension: .3 },
+      { label: 'Value (₱)', data: d.totals, borderColor: '#27ae60', backgroundColor: 'rgba(39,174,96,.1)', fill: true, tension: .3, yAxisID: 'y1' }
+    ]},
+    options: { responsive: true, scales: { y1: { position: 'right', grid: { drawOnChartArea: false } } } }
+  });
+}
+
+async function loadMaterialsChart() {
+  const d = await get('/dashboard/chart/top-materials');
+  if (charts.mat) charts.mat.destroy();
+  charts.mat = new Chart(document.getElementById('materialsChart'), {
+    type: 'bar',
+    data: { labels: d.labels, datasets: [{ label: 'Times Used', data: d.uses, backgroundColor: '#e67e22' }] },
+    options: { indexAxis: 'y', responsive: true }
+  });
+}
+
+async function loadUsersChart() {
+  const d = await get('/dashboard/top-users');
+  if (charts.users) charts.users.destroy();
+  charts.users = new Chart(document.getElementById('usersChart'), {
+    type: 'bar',
+    data: { labels: d.users.map(u => u.requestor_name), datasets: [{ label: 'Requests', data: d.users.map(u => u.count), backgroundColor: '#9b59b6' }] },
+    options: { indexAxis: 'y', responsive: true }
+  });
+}
+
+async function loadAll() {
+  await Promise.all([loadStats(), loadStatusChart(), loadDeptChart(), loadMonthlyChart(), loadMaterialsChart(), loadUsersChart()]);
+}
+
+// Real-time updates
+const socket = io();
+socket.on('request:created', () => { loadStats(); loadMonthlyChart(); });
+socket.on('request:decided', () => { loadStats(); loadStatusChart(); });
+socket.on('user:joined', () => loadStats());
+
+loadAll();
+</script>
+</body>
+</html>
